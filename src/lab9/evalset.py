@@ -103,6 +103,12 @@ def build_v2(items_v1: Path = ITEMS, labels_v1: Path = LABELS, pack: Path = PACK
     labels = json.loads(labels_v1.read_text(encoding="utf-8"))
     p = json.loads(pack.read_text(encoding="utf-8"))
     items = [{**it, "eval_set_version": "v2", "slices": slices_for(labels[it["claim_id"]], False)} for it in base]
+    # C-010, C-011 và C-107 đều liên quan đơn O-107.
+    for item in items:
+        if item["claim_id"] == "C-010":
+            item["failure_modes"] = sorted(
+                set(item["failure_modes"]) | {"FM-07"}
+            )
     for claim in p["claims"]:
         items.append({
             "item_id": f"E-{claim['claim_id'][2:]}",   # C-105 -> E-105
