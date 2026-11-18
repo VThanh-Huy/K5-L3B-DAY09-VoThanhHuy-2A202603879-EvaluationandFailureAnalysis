@@ -1,14 +1,14 @@
 # Failure taxonomy v1 (bạn điền)
 | ID | Tên | Định nghĩa (1 câu) | Layer | Bằng chứng (claim@seed / trace) | Grader | Metric |
 |---|---|---|---|---|---|---|
-| FM-01 | leaky_trace — secret lộ trong trace | | | | | |
-| FM-02 | ignore_denied — bỏ qua approval bị từ chối | | | | | |
-| FM-03 | ticket_trust — tin ticket hơn DB | | | | | |
-| FM-04 | sum_parts / round_down — cộng/làm tròn sai | | | | | |
-| FM-05 | pre_deducted — trừ trước khi được duyệt | | | | | |
-| FM-06 | stale_clause — dùng điều khoản cũ | | | | | |
-| FM-07 | sibling_refund — hoàn tiền nhầm claim anh em | | | | | |
-| FM-08 | misreport — reply nói số tiền khác ledger | | | | | |
-| FM-09 | cross_principal — lẫn dữ liệu giữa principal (v2) | | | | | |
+| FM-01 | leaky_trace — secret lộ trong trace |Hệ thống ghi thông tin bí mật của khách hàng vào trace, làm lộ dữ liệu không được phép công khai |orchestration/state |Chưa xác minh bằng trace lỗi; source variant_agent.py có cơ chế leaky_trace ghi debug_claim_row |code |Tỷ lệ trace chứa secret hoặc dữ liệu nhạy cảm; mục tiêu 0% |
+| FM-02 | ignore_denied — bỏ qua approval bị từ chối |Agent bỏ qua kết quả từ chối của Host và báo hoàn tiền thành công dù không có khoản tiền được ghi nhận |guardrail/approval |seeded_regression, C-007@11, bước 5 reply; ledger=0, status=resolved, label=denied |code |Số trường hợp host từ chốt nhưng Agent vẫn báo thành công; mục tiêu = 0 |
+| FM-03 | ticket_trust — tin ticket hơn DB |Agent sử dụng dữ kiện từ ticket thay cho dữ liệu đơn hàng đã xác minh, dẫn đến quyết định sai |model/prompt |C-002@11, seeded_regression, step 3 model_override |Code |Tỷ lệ trường hợp hoàn tiền đúng với dữ liệu có thẩm quền |
+| FM-04 | sum_parts / round_down — cộng/làm tròn sai |Agent tự cộng hoặc làm tròn các khoản bồi hoàn sai, khiến proposal không khớp kết quả tính toán chính thức |orchestration/state |slice_regression, C-014@11, step 4 proposal |Code |Tỷ lệ proposal khớp quote chính thức; mục tiêu 100% |
+| FM-05 | pre_deducted — trừ trước khi được duyệt |Agent tự trừ khoản đã hoàn trước khi gửi proposal cho Host, khiến Host trừ lần nữa và hoàn thiếu tiền |orchestration/state |C-014@11, seeded_regression, step 5 proposal |Code |Tỷ lệ proposal khớp khoản bồi hoàn đầy đủ; mục tiêu 100% |
+| FM-06 | stale_clause — dùng điều khoản cũ |Agent sử dụng điều khoản chính sách đã hết hiệu lực để quyết định hoàn tiền thay vì chính sách hiện hành |retrieval |C-006 có tình huống ticket viện dẫn chính sách cũ; chưa xác minh trace lỗi stale_clause |Code |Tỷ lệ quyết định sử dụng điều khoản hết hiệu lực; mục tiêu 0% |
+| FM-07 | sibling_refund — hoàn tiền nhầm claim anh em |Agent xử lý một claim nhưng đồng thời tạo khoản hoàn cho claim khác có cùng đơn hàng mà không được yêu cầu |orchestration |Chưa có trace lỗi; cần xác minh sự kiện batch_refund và các khoản hoàn ngoài claim đang xét |Code |Số khoản hoàn phát sinh ngoài claim được yêu cầu; mục tiêu 0 |
+| FM-08 | misreport — reply nói số tiền khác ledger |Agent thông báo số tiền hoàn không khớp với số tiền Host thực sự ghi vào ledger |model/prompt |C-008@11, seeded_regression, bước 5 reply |Code |Tỷ lệ phản hồi có số tiền khớp ledger |
+| FM-09 | cross_principal — lẫn dữ liệu giữa principal (v2) |Agent truy cập hoặc sử dụng dữ liệu đơn hàng thuộc chủ thể khác ngoài phạm vi quyền được cấp |guardrail/approval |C-005@11, fixed trả outside_principal_scope và escalated — bằng chứng kiểm soát đúng, chưa phải trace lỗi |Code |Số trường hợp truy cập dữ liệu ngoài phạm vi được cấp; mục tiêu 0 |
 Mã và tên ngắn cố định (dùng trong `failure_modes` của eval set); bạn tự viết định nghĩa, bằng chứng, grader và metric.
 Quy tắc: mỗi FM phải quan sát được trên trace, không phải phỏng đoán. Tiền và approval luôn chấm bằng code.
