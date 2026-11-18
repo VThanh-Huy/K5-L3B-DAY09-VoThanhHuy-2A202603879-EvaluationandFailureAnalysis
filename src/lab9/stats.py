@@ -6,6 +6,7 @@ Reference values to self-check are in tests/test_lab9_stats.py.
 """
 from __future__ import annotations
 
+from math import comb
 import numpy as np
 from typing import Sequence
 from collections.abc import Sequence
@@ -133,13 +134,23 @@ def paired_bootstrap(a: Sequence[float], b: Sequence[float], *, n_resamples: int
 def pass_at_k(n: int, c: int, k: int) -> float:
     """Probability that AT LEAST ONE of k trials drawn from n (c of them passing) passes.
     Unbiased estimator (Chen et al. 2021): 1 - C(n-c, k) / C(n, k). Raise ValueError if k > n."""
-    # TODO M6
-    raise NotImplementedError
+    if n <= 0 or c < 0 or c > n or k < 1 or k > n:
+        raise ValueError("Invalid n, c, k")
+
+    if n - c < k:
+        return 1.0
+
+    return 1.0 - comb(n - c, k) / comb(n, k)
 
 
 def pass_hat_k(n: int, c: int, k: int) -> float:
     """pass^k (tau-bench, Yao et al. 2024): probability that ALL k trials drawn from n pass.
     Unbiased estimator: C(c, k) / C(n, k). Raise ValueError if k > n.
     pass^k <= pass@1 <= pass@k; a reliable agent keeps pass^k close to pass@1."""
-    # TODO M6
-    raise NotImplementedError
+    if n <= 0 or c < 0 or c > n or k < 1 or k > n:
+        raise ValueError("Invalid n, c, k")
+
+    if c < k:
+        return 0.0
+
+    return comb(c, k) / comb(n, k)

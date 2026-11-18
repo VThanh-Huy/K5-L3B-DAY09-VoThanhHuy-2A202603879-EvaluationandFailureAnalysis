@@ -115,3 +115,119 @@ Case C-002@11, phiên bản `seeded_regression`:
 - Thêm item từ trace case: tăng `eval_set_version`, cập nhật nhãn và chạy lại baseline.
 - Thay đổi metric hoặc ngưỡng: tăng `metric_spec_version`, ghi rõ lý do và chạy lại các báo cáo so sánh.
 - Mọi báo cáo phải được tạo bằng lệnh `lab9.eval`, không chỉnh JSON bằng tay.
+
+## 10. Đánh giá nâng cao — Eval Set v2 (M5–M7)
+
+### 10.1. M5 — Eval Set v2 và Slice Gate
+
+**Thông tin Eval Set v2:**
+
+- Số lượng: 28 item × 5 seed = 140 lượt đánh giá.
+- Eval Set SHA: `1e209e1024b3`.
+- Kết quả kiểm tra dữ liệu: `0 problem(s)`.
+- Baseline `pass_rate`: 0.9786 (97,86%).
+- Baseline `pass_hat_5`: 0.8929 (89,29%).
+
+**Cấu hình Slice Gate:**
+
+| Nhóm dữ liệu | Ngưỡng tối thiểu | Có chặn release? |
+|---|---:|---|
+| `money_movement` | 0.90 | Có |
+| `adversarial` | 0.70 | Có |
+
+**Kết quả kiểm thử:**
+
+- `honest_refactor`: **MERGE — exit 0**.
+- `slice_regression`: **BLOCK — exit 1**.
+- Tỷ lệ PASS tổng thể của `slice_regression`: 0.9357 (93,57%).
+- Tỷ lệ PASS trong nhóm `money_movement`: 0.85 (85%), thấp hơn ngưỡng 0.90.
+
+**Nhận xét:**
+
+Mặc dù phiên bản `slice_regression` đạt tỷ lệ PASS tổng thể 93,57%, hệ thống vẫn chặn vì nhóm có liên quan đến giao dịch tiền chỉ đạt 85%.
+
+Kết quả này cho thấy việc đánh giá AI Agent chỉ dựa vào điểm trung bình có thể bỏ sót những lỗi nghiêm trọng trong các nhóm dữ liệu quan trọng. Slice Gate giúp kiểm soát rủi ro bằng cách áp dụng ngưỡng riêng cho từng nhóm.
+
+### 10.2. M6 — Đánh giá độ ổn định của Agent
+
+**Kiểm tra các hàm thống kê:**
+
+- Hoàn thiện `pass_at_k()` và `pass_hat_k()`.
+- Kết quả unit test: `9 passed`.
+- `pass_at_5` của baseline: 1.0000.
+- `pass_hat_5` của baseline: 0.8929.
+
+**A/A Testing:**
+
+- Bộ seed đối chứng: `66, 77, 88, 99, 110`.
+- Kết quả: tất cả metric đều có độ chênh lệch `Δ = 0`.
+
+Trong phạm vi MockLLM của bài lab, việc thay đổi bộ seed không làm thay đổi kết quả đánh giá. Tuy nhiên, kết quả này không bảo đảm AI Agent sử dụng LLM thực tế sẽ luôn cho đầu ra giống nhau.
+
+**Kiểm tra độ ổn định:**
+
+- Ngưỡng `pass_hat_5`: tối thiểu 0.88, có chặn release.
+- `flaky_regression` đạt `pass_rate = 0.9143`.
+- `flaky_regression` đạt `pass_hat_5 = 0.5714`.
+- Gate của `flaky_regression`: **BLOCK — exit 1**.
+- Gate của `honest_refactor`: **MERGE — exit 0**.
+
+**Nhận xét:**
+
+Phiên bản `flaky_regression` vẫn đạt tỷ lệ PASS trung bình 91,43%, nhưng `pass_hat_5` chỉ đạt 57,14%, thấp hơn ngưỡng 88%.
+
+Kết quả cho thấy Agent có thể hoạt động đúng trong phần lớn lượt chạy nhưng vẫn thiếu ổn định. Metric `pass_hat_5` giúp phát hiện rủi ro này.
+
+### 10.3. M7 — Kiểm tra tính toàn vẹn của hệ thống đánh giá
+
+**Kết quả kiểm thử:**
+
+| Hạng mục | Kết quả |
+|---|---|
+| Unit test Integrity Check | 2 passed |
+| Toàn bộ Advanced tests | 12 passed |
+| Integrity Traps | 4/4 bị chặn |
+| Mutation Score | 3/3 |
+| False Alarms | 0 |
+
+**Bốn Integrity Trap đã kiểm tra:**
+
+1. `evaluator_errors_as_nan`: Phát hiện kết quả đánh giá không hợp lệ do giá trị NaN.
+2. `dropped_failing_rows`: Phát hiện việc loại bỏ các dòng kiểm thử thất bại.
+3. `cherry_picked_seeds`: Phát hiện việc chọn bộ seed có lợi để làm sai lệch báo cáo.
+4. `loosened_spec`: Phát hiện việc nới lỏng cấu hình đánh giá so với baseline.
+
+Cả bốn trường hợp đều bị Gate chặn thành công.
+
+**Kết quả Mutation Testing:**
+
+| Phiên bản | Kết quả mong đợi | Kết quả thực tế |
+|---|---|---|
+| `fixed` | MERGE | MERGE |
+| `honest_refactor` | MERGE | MERGE |
+| `seeded_regression` | BLOCK | BLOCK |
+| `slice_regression` | BLOCK | BLOCK |
+| `flaky_regression` | BLOCK | BLOCK |
+
+- Mutation Score: **3/3** — phát hiện cả ba phiên bản regression.
+- False Alarms: **0** — không chặn nhầm hai phiên bản hợp lệ trong bộ kiểm tra.
+
+**Nhận xét:**
+
+Integrity Check giúp bảo đảm kết quả đánh giá không bị làm sai lệch do thiếu dữ liệu, lỗi của evaluator, thay đổi seed hoặc nới lỏng ngưỡng kiểm tra.
+
+Trong các bài kiểm thử công khai, Gate vừa phát hiện được các phiên bản Agent có lỗi, vừa cho phép những phiên bản hợp lệ vượt qua.
+
+### Giới hạn của đánh giá
+
+- Eval Set v2 chỉ gồm 28 item và 5 seed, nên kết quả trên từng nhóm dữ liệu có thể chưa đại diện cho toàn bộ tình huống thực tế.
+- A/A Testing được thực hiện trên MockLLM, chưa phản ánh đầy đủ tính biến động của các LLM thực tế.
+- Các hidden tests của giảng viên có thể phát hiện những trường hợp chưa được bao phủ.
+
+### Kết luận M5–M7
+
+Các kết quả kiểm tra công khai cho thấy:
+
+- **M5:** Slice Gate phát hiện được lỗi ở nhóm giao dịch tiền dù tỷ lệ PASS tổng thể vẫn cao.
+- **M6:** Gate phát hiện được Agent thiếu ổn định thông qua `pass_hat_5`.
+- **M7:** Integrity Check chặn được các trường hợp làm sai lệch kết quả đánh giá.
